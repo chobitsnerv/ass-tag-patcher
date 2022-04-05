@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "axios": "^0.26.1",
+    "browser-id3-writer": "^4.4.0",
+    "csv-parse": "^5.0.4",
+    "tiny-async-pool": "^2.0.1"
+  }
+}
