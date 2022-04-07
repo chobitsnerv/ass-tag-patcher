@@ -150,18 +150,34 @@ function addTag(filename) {
 
       const writer = new ID3Writer(songBuffer);
       writer
+        .setFrame("TIT1", audioInfo.date)
         .setFrame("TIT2", audioInfo.nameorg)
         .setFrame(
           "TIT3",
           audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
-            ? `【(${
-                audioInfo.version + " " + audioInfo.versionComment
-              }).trim()】`
+            ? `【${(
+                audioInfo.version +
+                " " +
+                audioInfo.versionComment
+              ).trim()}】`
             : ""
         )
         .setFrame("TPE1", [...audioInfo.artist.split(",")])
-        .setFrame("TYER", audioInfo.date.split(".")[0])
-        .setFrame("TDAT", audioInfo.date);
+        .setFrame("TYER", audioInfo.date)
+        .setFrame(
+          "TDAT",
+          audioInfo.date.split(".")[1] + audioInfo.date.split(".")[2]
+        )
+        .setFrame("TCON", [
+          audioInfo.date,
+          audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
+            ? `【${(
+                audioInfo.version +
+                " " +
+                audioInfo.versionComment
+              ).trim()}】`
+            : "",
+        ]);
       writer.addTag();
 
       const taggedSongBuffer = Buffer.from(writer.arrayBuffer);
