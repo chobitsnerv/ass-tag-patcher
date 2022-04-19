@@ -1,0 +1,12 @@
+{
+  "Tagpatcher": {
+    "fields": {
+      "date": true,
+      "name": true,
+      "versioninfo": true,
+      "artist": true,
+      "year": true
+    },
+    "ffmpegPath": ".\\ffmpeg.exe"
+  }
+}

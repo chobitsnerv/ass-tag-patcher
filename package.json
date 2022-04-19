@@ -2,7 +2,9 @@
   "dependencies": {
     "axios": "^0.26.1",
     "browser-id3-writer": "^4.4.0",
+    "config": "^3.3.7",
     "csv-parse": "^5.0.4",
+    "ffmetadata": "^1.7.0",
     "tiny-async-pool": "^2.0.1"
   }
 }

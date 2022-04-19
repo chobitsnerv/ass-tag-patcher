@@ -2,10 +2,12 @@ const { parse } = require("csv-parse/sync");
 const axios = require("axios");
 const process = require("process");
 const ID3Writer = require("browser-id3-writer");
+const ffmetadata = require("ffmetadata");
 const path = require("path");
 const fs = require("fs");
+const config = require("config");
 const asyncPool = require("tiny-async-pool");
-const dbUrl = "https://cf.csv-db.studio.a-soul.fans/song_database.csv";
+const dbUrl = "https://csv-db.studio.asf.ink/song_database.csv";
 
 const artist_mapping = [];
 artist_mapping["向晚"] = "A";
@@ -24,15 +26,17 @@ if (!_arguments || _arguments.length != 1) {
 processAudios(_arguments[0]);
 let dbObject = null;
 let outputPath = null;
+let parameters = null;
 
 async function processAudios(fpath) {
   const audiosPath = path.resolve(fpath);
   const csvdb = await fetchDB();
   dbObject = parseSongCsv(csvdb);
   const audioList = fs.readdirSync(audiosPath);
-
+  parameters = config.get("Tagpatcher");
   outputPath = fs.mkdtempSync(path.join(fpath, "processed-"));
-  console.info("Output folder has been created:" + outputPath);
+  ffmetadata.setFfmpegPath(parameters.ffmpegPath);
+  fileExtention = console.info("Output folder has been created:" + outputPath);
   console.info(
     "***********************Processing Start!************************"
   );
@@ -140,51 +144,102 @@ function convertSong(row) {
 function addTag(filename) {
   return new Promise(function (resolve, reject) {
     try {
-      const songBuffer = fs.readFileSync(path.join(_arguments[0], filename));
-
-      const audioInfo = dbObject.find(
-        (song) => filename === song.name + ".mp3"
-      );
-      if (!audioInfo)
+      const basicname = filename.substring(0, filename.lastIndexOf("."));
+      const extname = filename.substring(filename.lastIndexOf(".") + 1);
+      const audioInfo = dbObject.find((song) => basicname === song.name);
+      if (!audioInfo) {
+        console.warn(filename + "  is skiped because of no reference db info!");
         resolve(filename + "  is skiped because of no reference db info!");
+        return;
+      }
+      const songBuffer = fs.readFileSync(path.join(_arguments[0], filename));
+      let _output = null;
+      if (extname === "mp3") {
+        const writer = new ID3Writer(songBuffer);
+        writer
+          .setFrame("TIT1", audioInfo.date)
+          .setFrame("TIT2", audioInfo.nameorg)
+          .setFrame(
+            "TIT3",
+            audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
+              ? `【${(
+                  audioInfo.version +
+                  " " +
+                  audioInfo.versionComment
+                ).trim()}】`
+              : ""
+          )
+          .setFrame("TPE1", [...audioInfo.artist.split(",")])
+          .setFrame("TYER", audioInfo.date)
+          .setFrame(
+            "TDAT",
+            audioInfo.date.split(".")[1] + audioInfo.date.split(".")[2]
+          )
+          .setFrame("TCON", [
+            audioInfo.date,
+            audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
+              ? `【${(
+                  audioInfo.version +
+                  " " +
+                  audioInfo.versionComment
+                ).trim()}】`
+              : "",
+          ]);
+        writer.addTag();
 
-      const writer = new ID3Writer(songBuffer);
-      writer
-        .setFrame("TIT1", audioInfo.date)
-        .setFrame("TIT2", audioInfo.nameorg)
-        .setFrame(
-          "TIT3",
-          audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
-            ? `【${(
-                audioInfo.version +
-                " " +
-                audioInfo.versionComment
-              ).trim()}】`
-            : ""
-        )
-        .setFrame("TPE1", [...audioInfo.artist.split(",")])
-        .setFrame("TYER", audioInfo.date)
-        .setFrame(
-          "TDAT",
-          audioInfo.date.split(".")[1] + audioInfo.date.split(".")[2]
-        )
-        .setFrame("TCON", [
-          audioInfo.date,
-          audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
-            ? `【${(
-                audioInfo.version +
-                " " +
-                audioInfo.versionComment
-              ).trim()}】`
-            : "",
-        ]);
-      writer.addTag();
-
-      const taggedSongBuffer = Buffer.from(writer.arrayBuffer);
-      fs.writeFileSync(path.join(outputPath, filename), taggedSongBuffer);
-      console.info("ID3 has been addee for: " + filename);
-      resolve(filename);
+        _output = Buffer.from(writer.arrayBuffer);
+        fs.writeFileSync(path.join(outputPath, filename), _output);
+        console.info("Tag has been addee for: " + filename);
+        resolve(filename);
+      } else if (extname === "m4a" || extname === "mp4") {
+        const tags = {
+          title: audioInfo.nameorg,
+          artist: audioInfo.artist,
+          genre: [
+            audioInfo.date,
+            audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
+              ? `【${(
+                  audioInfo.version +
+                  " " +
+                  audioInfo.versionComment
+                ).trim()}】`
+              : "",
+          ],
+          comment:
+            audioInfo.date + audioInfo.version.length > 0 ||
+            audioInfo.versionComment.length > 0
+              ? `【${(
+                  audioInfo.version +
+                  " " +
+                  audioInfo.versionComment
+                ).trim()}】`
+              : "",
+          year: audioInfo.date,
+          date: audioInfo.date,
+          lyrics: "",
+        };
+        fs.writeFileSync(
+          path.join(outputPath, filename),
+          fs.readFileSync(path.join(_arguments[0], filename))
+        );
+        ffmetadata.write(path.join(outputPath, filename), tags, function (err) {
+          if (err) {
+            throw err;
+          } else {
+            console.info("Tag has been addee for: " + filename);
+            resolve(filename);
+          }
+        });
+      } else {
+        console.warn(
+          filename + "  is skiped because of unsopported audio format!"
+        );
+        resolve(filename + "  is skiped because of unsopported audio format!");
+        return;
+      }
     } catch (err) {
+      console.error("Tag failed to be addee for: " + filename);
+      console.error(err);
       reject(err);
     }
   });
