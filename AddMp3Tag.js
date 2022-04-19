@@ -1,7 +1,6 @@
 const { parse } = require("csv-parse/sync");
 const axios = require("axios");
 const process = require("process");
-const ID3Writer = require("browser-id3-writer");
 const ffmetadata = require("ffmetadata");
 const path = require("path");
 const fs = require("fs");
@@ -129,14 +128,14 @@ function convertSong(row) {
 
   // 返回一首歌
   return {
-    date: _date,
+    date: parameters.date ? _date : "",
     name: _songName,
-    nameorg: row["歌名"].trim(),
+    nameorg: parameters.title ? row["歌名"].trim() : "",
     ext_name: row["文件类型"].trim(),
-    version: row["版本号"].trim(),
-    versionComment: row["版本备注"].trim(),
+    version: parameters.versioninfo ? row["版本号"].trim() : "",
+    versionComment: parameters.versioninfo ? row["版本备注"].trim() : "",
     orginal_artist: row["原曲艺术家"].trim(),
-    artist: row["演唱者"].trim(),
+    artist: parameters.artist ? row["演唱者"].trim() : "",
     language: row["语言"].trim(),
   };
 }
@@ -152,15 +151,20 @@ function addTag(filename) {
         resolve(filename + "  is skiped because of no reference db info!");
         return;
       }
-      const songBuffer = fs.readFileSync(path.join(_arguments[0], filename));
       let _output = null;
-      if (extname === "mp3") {
-        const writer = new ID3Writer(songBuffer);
-        writer
-          .setFrame("TIT1", audioInfo.date)
-          .setFrame("TIT2", audioInfo.nameorg)
-          .setFrame(
-            "TIT3",
+      if (extname === "mp3" || extname === "m4a" || extname === "mp4") {
+        const tags = {
+          title: audioInfo.nameorg,
+          TIT3:
+            audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
+              ? `【${(
+                  audioInfo.version +
+                  " " +
+                  audioInfo.versionComment
+                ).trim()}】`
+              : "",
+          artist: audioInfo.artist,
+          genre: `${audioInfo.date};${
             audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
               ? `【${(
                   audioInfo.version +
@@ -168,53 +172,16 @@ function addTag(filename) {
                   audioInfo.versionComment
                 ).trim()}】`
               : ""
-          )
-          .setFrame("TPE1", [...audioInfo.artist.split(",")])
-          .setFrame("TYER", audioInfo.date)
-          .setFrame(
-            "TDAT",
-            audioInfo.date.split(".")[1] + audioInfo.date.split(".")[2]
-          )
-          .setFrame("TCON", [
-            audioInfo.date,
+          }`,
+          comment: `${audioInfo.date};${
             audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
               ? `【${(
                   audioInfo.version +
                   " " +
                   audioInfo.versionComment
                 ).trim()}】`
-              : "",
-          ]);
-        writer.addTag();
-
-        _output = Buffer.from(writer.arrayBuffer);
-        fs.writeFileSync(path.join(outputPath, filename), _output);
-        console.info("Tag has been addee for: " + filename);
-        resolve(filename);
-      } else if (extname === "m4a" || extname === "mp4") {
-        const tags = {
-          title: audioInfo.nameorg,
-          artist: audioInfo.artist,
-          genre: [
-            audioInfo.date,
-            audioInfo.version.length > 0 || audioInfo.versionComment.length > 0
-              ? `【${(
-                  audioInfo.version +
-                  " " +
-                  audioInfo.versionComment
-                ).trim()}】`
-              : "",
-          ],
-          comment:
-            audioInfo.date + audioInfo.version.length > 0 ||
-            audioInfo.versionComment.length > 0
-              ? `【${(
-                  audioInfo.version +
-                  " " +
-                  audioInfo.versionComment
-                ).trim()}】`
-              : "",
-          year: audioInfo.date,
+              : ""
+          }`,
           date: audioInfo.date,
           lyrics: "",
         };

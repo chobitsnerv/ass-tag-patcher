@@ -2,10 +2,10 @@
   "Tagpatcher": {
     "fields": {
       "date": true,
-      "name": true,
+      "title": true,
       "versioninfo": true,
       "artist": true,
-      "year": true
+      "lyrics": false
     },
     "ffmpegPath": ".\\ffmpeg.exe"
   }
