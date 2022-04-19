@@ -25,14 +25,13 @@ if (!_arguments || _arguments.length != 1) {
 processAudios(_arguments[0]);
 let dbObject = null;
 let outputPath = null;
-let parameters = null;
+let parameters = config.get("Tagpatcher");
 
 async function processAudios(fpath) {
   const audiosPath = path.resolve(fpath);
   const csvdb = await fetchDB();
   dbObject = parseSongCsv(csvdb);
   const audioList = fs.readdirSync(audiosPath);
-  parameters = config.get("Tagpatcher");
   outputPath = fs.mkdtempSync(path.join(fpath, "processed-"));
   ffmetadata.setFfmpegPath(parameters.ffmpegPath);
   fileExtention = console.info("Output folder has been created:" + outputPath);
