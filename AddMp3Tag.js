@@ -127,14 +127,14 @@ function convertSong(row) {
 
   // 返回一首歌
   return {
-    date: parameters.date ? _date : "",
+    date: parameters.fields.date ? _date : "",
     name: _songName,
-    nameorg: parameters.title ? row["歌名"].trim() : "",
+    nameorg: parameters.fields.title ? row["歌名"].trim() : "",
     ext_name: row["文件类型"].trim(),
-    version: parameters.versioninfo ? row["版本号"].trim() : "",
-    versionComment: parameters.versioninfo ? row["版本备注"].trim() : "",
+    version: parameters.fields.versioninfo ? row["版本号"].trim() : "",
+    versionComment: parameters.fields.versioninfo ? row["版本备注"].trim() : "",
     orginal_artist: row["原曲艺术家"].trim(),
-    artist: parameters.artist ? row["演唱者"].trim() : "",
+    artist: parameters.fields.artist ? row["演唱者"].trim() : "",
     language: row["语言"].trim(),
   };
 }
